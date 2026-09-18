@@ -2,6 +2,7 @@
  const app = express ()
 app.use(express.json());
 require("dotenv").config();
+const {nanoid} = require("nanoid"); 
 const pool = require("./db");
 
  const PORT=   process.env.PORT || 3000;
@@ -30,11 +31,14 @@ if (!longUrl || typeof longUrl !== "string" || !longUrl.trim()) {
 //  const newUrl=new URL(longUrl);
 try {
     const newUrl=new URL(longUrl);
-    return  res.status(200).json({  message : "valid Destination Url "})
+    const shortCode=nanoid(7)
+   console.log("slug:", shortCode, "for:", newUrl.toString());
+return res.status(200).json({slug: shortCode, cleaned: newUrl.toString()});
+    // return  res.status(200).json({  message : "valid Destination Url "})
 
 }
 catch (error){
-
+ console.log("REAL ERROR:", error.message);
     return res.status(400).json({  error : "Invalid URL. Include http://..."})
 }
 
