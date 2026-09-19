@@ -58,11 +58,37 @@ if (!longUrl || typeof longUrl !== "string" || !longUrl.trim()) {
 
      })
 
+app.get("/:code", async (req, res) => {
+  const { code } = req.params;
+  console.log("ticket:", code);
+
+  try {
+   
+    const result = await pool.query(
+      "SELECT short_code, long_url, expires_at, click_count FROM urls WHERE short_code = $1",
+      [code]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const row = result.rows[0];
+
+    
+    if (new Date(row.expires_at) < new Date()) {
+      await pool.query("DELETE FROM urls WHERE short_code = $1", [code]);
+      return res.status(410).send("Link expired (24h) and deleted");
+    }
 
 
-
-
-
+    await pool.query("UPDATE urls SET click_count = click_count + 1 WHERE short_code = $1", [code]);
+    return res.redirect(302, row.long_url);
+  } catch (err) {
+    console.log("REAL ERROR:", err.message);
+    return res.status(500).json({ error: "DB error" });
+  }
+});
 
 
 
