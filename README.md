@@ -1,4 +1,4 @@
-# URL Shortener with Analytics
+# SHURL - URL Shortener with Analytics
 
 A learning-focused full-stack URL shortener built from first principles.
 
