@@ -26,24 +26,34 @@ export default function App() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // TODO by you (logic part — same why-chain as backend):
-  // POST (create) not GET. JSON + Content-Type cover. 201 show, 400 show words.
-  // Hint:
-  //   const res = await fetch('http://localhost:3000/api/shorten', {
-  //     method: 'POST', headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({ longUrl })
-  //   });
-  //   const data = await res.json();
-  //   if (!res.ok) setError(data.error); else setResult(data);
-  async function handleShorten(e) {
-    e.preventDefault();
-    setError('');
-    setResult(null);
-    // TODO: validate empty here? Why both UI + API gates?
-    // TODO: setLoading(true), fetch POST, setResult/setError, finally setLoading(false)
-    setError('Logic TODO — wire fetch POST here (you do it by hand).');
-  }
 
+  async function handleShorten(e)  {
+     e.preventDefault();
+  setError('');
+  setResult(null);
+setLoading(true);
+
+  
+   try{
+      const res =       await fetch("http://localhost:3000/api/shorten", {
+                 'method': 'POST',
+                  headers:   {'Content-Type':'application/json'},
+                        
+                body:JSON.stringify({longUrl}),
+                }
+          )
+           const data =await res.json();
+           if (!res.ok) {
+                  setError(data.error || 'Failed to shorten.');
+            } else {
+                 setResult(data);
+              }
+           } catch (err) {
+                         setError('Server unreachable. Is localhost:3000 running?');
+        } finally {
+           setLoading(false);
+           }
+          }
   return (
     <div className="page">
       {floats.map((f, i) => (
