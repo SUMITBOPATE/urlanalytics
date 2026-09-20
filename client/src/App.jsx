@@ -2,12 +2,6 @@
 // Backend you built: POST /api/shorten -> 201 {shortUrl}, GET /:code -> 302.
 import { useState } from 'react';
 
-const floats = [
-  { c: 'f1', e: '♪' }, { c: 'f2', e: '✆' }, { c: 'f3', e: '◉' },
-  { c: 'f4', e: '▶' }, { c: 'f5', e: '◍' }, { c: 'f6', e: 'f' },
-  { c: 'f7', e: 'P' }, { c: 'f8', e: '◎' }, { c: 'f9', e: '♡' },
-];
-
 const features = [
   { e: '⚡', t: '7-char links', d: 'Random URL-safe slugs. Short to share, huge space (62⁷ combos).' },
   { e: '⏳', t: '24h expiry', d: 'Every link auto-expires. Expired visits get 410 + row deleted.' },
@@ -25,6 +19,29 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function copyShort() {
+    if (!result?.shortUrl) return;
+    try {
+      await navigator.clipboard.writeText(result.shortUrl);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = result.shortUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  const isExpired = result?.expiresAt ? new Date(result.expiresAt) < new Date() : false;
+  const shortHost = result?.shortUrl ? result.shortUrl.replace(/^https?:\/\//, '') : '';
+  const longShort = result?.longUrl
+    ? (result.longUrl.length > 42 ? result.longUrl.slice(0, 42) + '…' : result.longUrl)
+    : '';
 
 
   async function handleShorten(e)  {
@@ -32,10 +49,10 @@ export default function App() {
   setError('');
   setResult(null);
 setLoading(true);
-
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
   
    try{
-      const res =       await fetch("http://localhost:3000/api/shorten", {
+      const res =       await fetch(`${API}/api/shorten`, {
                  'method': 'POST',
                   headers:   {'Content-Type':'application/json'},
                         
@@ -56,10 +73,6 @@ setLoading(true);
           }
   return (
     <div className="page">
-      {floats.map((f, i) => (
-        <div key={i} className={`float ${f.c}`}>{f.e}</div>
-      ))}
-
       <div className="hero">
         <span className="pill">SHURL • SHORT LINKS</span>
         <h1>Short links that land<br /><span>right place, every time</span></h1>
@@ -71,29 +84,39 @@ setLoading(true);
       </div>
 
       <div className="card" id="shorten">
-        <div className="card-top">
-          <span>🔗 Shurl</span>
-          <span className="tag">SHORT • 24H</span>
-        </div>
-        <p className="muted">Powered by Express + Neon Postgres</p>
-        <div className="tabs"><b>Shorten</b><span>Stats</span><span>Clicks</span><span>Expiry</span></div>
         <form onSubmit={handleShorten}>
           <div className="row">
+            <span className="linkico">🔗</span>
             <input
               value={longUrl}
               onChange={(e) => setLongUrl(e.target.value)}
-              placeholder="🔗  Paste long URL...  https://"
+              placeholder="Shorten any link..."
             />
             <button type="submit" disabled={loading}>
-              {loading ? '...' : 'Shorten'}
+              {loading ? '...' : 'Shorten link'}
             </button>
           </div>
         </form>
         {error && <p className="err">{error}</p>}
         {result && (
-          <div className="out">
-            Short: <a href={result.shortUrl} target="_blank" rel="noreferrer">{result.shortUrl}</a>
-            <div className="muted">Expires: {result.expiresAt}</div>
+          <div className="linkrow">
+            <div className="fav">🔗</div>
+            <div className="linkmain">
+              <div className="shortline">
+                <a href={result.shortUrl} target="_blank" rel="noreferrer">{shortHost}</a>
+                <button type="button" className="iconbtn copybtn" onClick={() => { console.log('copy click', result?.shortUrl); copyShort(); }} title="Copy short link">
+                  {copied ? '✓' : '⧉'}
+                </button>
+                <span className="iconbtn faded" title="QR coming soon">▦</span>
+              </div>
+              <div className="longline">↳ {result.longUrl ? result.longUrl.replace(/^https?:\/\//, '') : longShort}</div>
+              {copied && <div className="muted">Copied!</div>}
+            </div>
+            <div className="linkside">
+              <span className="clickpill">☄ {result.clickCount ?? 0} clicks</span>
+              {isExpired && <span className="expired">⚠ EXPIRED</span>}
+            </div>
+            <span className="dots">⋮</span>
           </div>
         )}
         {!result && !error && (
