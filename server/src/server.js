@@ -5,7 +5,8 @@ require("dotenv").config();
 const {nanoid} = require("nanoid"); 
 const pool = require("./db");
 const cors = require("cors");
-app.use(cors({ origin: "http://localhost:5173" }));
+ const allowed = [process.env.FRONTEND_URL, "http://localhost:5173"].filter(Boolean);
+app.use(cors({ origin: allowed }));
 
 
  const PORT=   process.env.PORT || 3000;
