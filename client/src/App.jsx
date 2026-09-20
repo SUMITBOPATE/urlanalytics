@@ -1,7 +1,7 @@
 // Shurl landing — UI shell, LOGIC TODO by you.
 // Backend you built: POST /api/shorten -> 201 {shortUrl}, GET /:code -> 302.
 import { useState } from 'react';
-
+import { Analytics } from '@vercel/analytics/react';
 const features = [
   { e: '⚡', t: '7-char links', d: 'Random URL-safe slugs. Short to share, huge space (62⁷ combos).' },
   { e: '⏳', t: '24h expiry', d: 'Every link auto-expires. Expired visits get 410 + row deleted.' },
