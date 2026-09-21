@@ -89,12 +89,16 @@ a { color: #2563eb; }
   position: relative; z-index: 3; pointer-events: auto;
 }
 .iconbtn.faded { opacity: 0.35; cursor: not-allowed; background: #f1f5f9; }
+.linkrow.fadedrow { opacity: 0.55; }
+.linkrow.fadedrow .fav { background: #94a3b8; }
 .longline { font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; font-weight: 400; color: #64748b; margin-top: 4px; word-break: break-all; }
 .linkside { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
 .clickpill {
   border: 1px solid #e5e7eb; background: #fff; border-radius: 8px;
   font-size: 12px; padding: 5px 10px; color: #475569; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
 }
+.refreshbtn { border: 0; background: transparent; width: 22px; height: 22px; font-size: 13px; }
 .expired { background: #f1f5f9; color: #64748b; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 3px 8px; }
 .dots { color: #94a3b8; cursor: pointer; padding: 4px; }
 @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .hero h1 { font-size: 34px; } .linkside { display: none; } }

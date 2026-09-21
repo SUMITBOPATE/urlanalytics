@@ -1,6 +1,6 @@
 // Shurl landing — UI shell, LOGIC TODO by you.
 // Backend you built: POST /api/shorten -> 201 {shortUrl}, GET /:code -> 302.
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 const features = [
   { e: '⚡', t: '7-char links', d: 'Random URL-safe slugs. Short to share, huge space (62⁷ combos).' },
@@ -19,29 +19,67 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  async function copyShort() {
-    if (!result?.shortUrl) return;
+  const [copiedCode, setCopiedCode] = useState('');
+  // Per-device history: newest first, survives reloads. No login for v1.
+  const [history, setHistory] = useState(() => {
     try {
-      await navigator.clipboard.writeText(result.shortUrl);
+      return JSON.parse(localStorage.getItem('shurl-history') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  // Tick so expired rows fade live without reload.
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setNowTick((n) => n + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem('shurl-history', JSON.stringify(history.slice(0, 20)));
+    } catch { /* storage full/blocked: history just won't persist */ }
+  }, [history]);
+
+  async function copyText(text, code) {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
     } catch {
       const ta = document.createElement('textarea');
-      ta.value = result.shortUrl;
+      ta.value = text;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(''), 1500);
   }
 
-  const isExpired = result?.expiresAt ? new Date(result.expiresAt) < new Date() : false;
-  const shortHost = result?.shortUrl ? result.shortUrl.replace(/^https?:\/\//, '') : '';
-  const longShort = result?.longUrl
-    ? (result.longUrl.length > 42 ? result.longUrl.slice(0, 42) + '…' : result.longUrl)
-    : '';
+  const rowExpired = (row) => (row?.expiresAt ? new Date(row.expiresAt) < new Date() : false);
+  const hostOf = (url) => (url ? url.replace(/^https?:\/\//, '') : '');
+  const destOf = (url) => {
+    const h = hostOf(url);
+    return h.length > 42 ? h.slice(0, 42) + '…' : h;
+  };
+
+  // Fresh truth per row: ask stats endpoint, update only that entry.
+  // Why separate call? Birth snapshot (POST) freezes clicks at 0; visits happen later.
+  async function refreshRow(code) {
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    try {
+      const res = await fetch(`${API}/api/stats/${code}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setHistory((h) =>
+        h.map((e) =>
+          e.shortCode === code
+            ? { ...e, clickCount: data.click_count ?? data.clickCount ?? e.clickCount ?? 0, expiresAt: data.expires_at || data.expiresAt || e.expiresAt }
+            : e
+        )
+      );
+    } catch { /* offline: keep old number, no lie */ }
+  }
 
 
   async function handleShorten(e)  {
@@ -63,7 +101,16 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
            if (!res.ok) {
                   setError(data.error || 'Failed to shorten.');
             } else {
-                 setResult(data);
+                 const entry = {
+                   shortCode: data.shortCode,
+                   shortUrl: data.shortUrl,
+                   longUrl: data.longUrl || longUrl,
+                   expiresAt: data.expiresAt,
+                   clickCount: data.clickCount ?? 0,
+                   createdAt: Date.now(),
+                 };
+                 setResult(entry);
+                 setHistory((h) => [entry, ...h.filter((e) => e.shortCode !== entry.shortCode)].slice(0, 20));
               }
            } catch (err) {
                          setError('Server unreachable. Is localhost:3000 running?');
@@ -98,30 +145,36 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
           </div>
         </form>
         {error && <p className="err">{error}</p>}
-        {result && (
-          <div className="linkrow">
-            <div className="fav">🔗</div>
-            <div className="linkmain">
-              <div className="shortline">
-                <a href={result.shortUrl} target="_blank" rel="noreferrer">{shortHost}</a>
-                <button type="button" className="iconbtn copybtn" onClick={() => { console.log('copy click', result?.shortUrl); copyShort(); }} title="Copy short link">
-                  {copied ? '✓' : '⧉'}
-                </button>
-                <span className="iconbtn faded" title="QR coming soon">▦</span>
+        {history.length === 0 && !error && (
+          <div className="out muted">🔗 shurl/••••••• — your short links will stack here, newest on top.</div>
+        )}
+        {history.map((row) => {
+          const expired = rowExpired(row);
+          const isCopied = copiedCode === row.shortCode;
+          return (
+            <div key={row.shortCode} className={`linkrow${expired ? ' fadedrow' : ''}`}>
+              <div className="fav">🔗</div>
+              <div className="linkmain">
+                <div className="shortline">
+                  <a href={row.shortUrl} target="_blank" rel="noreferrer">{hostOf(row.shortUrl)}</a>
+                  <button type="button" className="iconbtn copybtn" onClick={() => copyText(row.shortUrl, row.shortCode)} title="Copy short link">
+                    {isCopied ? '✓' : '⧉'}
+                  </button>
+                  <span className="iconbtn faded" title="QR coming soon">▦</span>
+                </div>
+                <div className="longline">↳ {destOf(row.longUrl)}</div>
+                {isCopied && <div className="muted">Copied!</div>}
               </div>
-              <div className="longline">↳ {result.longUrl ? result.longUrl.replace(/^https?:\/\//, '') : longShort}</div>
-              {copied && <div className="muted">Copied!</div>}
-            </div>
             <div className="linkside">
-              <span className="clickpill">☄ {result.clickCount ?? 0} clicks</span>
-              {isExpired && <span className="expired">⚠ EXPIRED</span>}
+              <span className="clickpill">☄ {row.clickCount ?? 0} clicks
+                <button type="button" className="iconbtn refreshbtn" onClick={() => refreshRow(row.shortCode)} title="Refresh clicks">↻</button>
+              </span>
+              {expired && <span className="expired">⚠ EXPIRED</span>}
             </div>
-            <span className="dots">⋮</span>
-          </div>
-        )}
-        {!result && !error && (
-          <div className="out muted">🔗 shurl/••••••• — your short link will appear here.</div>
-        )}
+              <span className="dots">⋮</span>
+            </div>
+          );
+        })}
       </div>
 
       <section className="section">
