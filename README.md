@@ -1,5 +1,6 @@
-# SHURL - URL Shortener with Analytics
+# SHURL -Create WhatsApp links, QR codes and trackable short links for your business.
 
+Create WhatsApp links, QR codes and trackable short links for your business.
 A learning-focused full-stack URL shortener built from first principles.
 
 The project will begin with Node.js's built-in HTTP module, then gradually add
